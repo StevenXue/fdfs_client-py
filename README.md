@@ -1,6 +1,6 @@
 # Fdfs_client py
 
-The Python interface to the Fastdfs Ver 4.06.
+The Python interface to the Fastdfs Ver 4.06.1.
 
 ## Installation
 
@@ -328,6 +328,8 @@ fdfs_client-py is developed and maintained by scott yuan (scottzer8@gmail.com)
 fdfs_client-py is bug fixed and maintained by hay86
 
 It can be found here: http://github.com/hay86/fdfs_client-py
+
+There is latest features' fix here: https://github.com/StevenXue/fdfs_client-py
 
 Special thanks to:
 

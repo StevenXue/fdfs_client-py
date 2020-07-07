@@ -16,9 +16,15 @@ from fdfs_client.exceptions import (
     DataError
 )
 
+
 # start class Connection
 class Connection(object):
-    """Manage TCP comunication to and from Fastdfs Server."""
+    """
+    Manage TCP communication to and from Fastdfs Server.
+    最新版的关于connect参数remote_port的优化，经过验证不适用于当前项目的调用，需手动撤销：
+    https://github.com/hay86/fdfs_client-py/issues/20
+    There is code diff with： https://github.com/JaceHo/fdfs_client-py
+    """
 
     def __init__(self, **conn_kwargs):
         self.pid = os.getpid()
@@ -71,7 +77,7 @@ class Connection(object):
         try:
             self._sock.close()
         except socket.error as e:
-            pass
+            raise ConnectionError(self._errormessage(e))
         self._sock = None
 
     def get_sock(self):
@@ -116,10 +122,12 @@ class ConnectionPool(object):
         if self._conns_created >= self.max_conn:
             raise ConnectionError('[-] Error: Too many connections.')
         num_try = 10
+        conn_instance = None
         while True:
             try:
                 if num_try <= 0:
-                    sys.exit()
+                    # sys.exit()
+                    break
                 conn_instance = self.conn_class(**self.conn_kwargs)
                 conn_instance.connect()
                 self._conns_created += 1
@@ -127,7 +135,8 @@ class ConnectionPool(object):
             except ConnectionError as e:
                 print(e)
                 num_try -= 1
-                conn_instance = None
+        if num_try <= 0:
+            raise ConnectionError("Fail to connect with Fdfs-server after trying many times")
         return conn_instance
 
     def get_connection(self):
@@ -179,18 +188,23 @@ def tcp_recv_response(conn, bytes_size, buffer_size=4096):
         @buffer_size: int, receive buffer size
         @Return: tuple,(response, received_size)
     """
-    recv_buff = []
+    response = ''
     total_size = 0
+    total_bytes_size = bytes_size
     try:
-        while bytes_size > 0:
+        while 1:
+            if total_bytes_size - total_size <= buffer_size:
+                resp = conn._sock.recv(buffer_size)
+                response += resp
+                total_size += len(resp)
+                break
             resp = conn._sock.recv(buffer_size)
-            recv_buff.append(resp)
+            response += resp
             total_size += len(resp)
-            bytes_size -= len(resp)
     except (socket.error, socket.timeout) as e:
         raise ConnectionError('[-] Error: while reading from socket: (%s)' \
                               % e.args)
-    return b''.join(recv_buff), total_size
+    return response, total_size
 
 
 def tcp_send_data(conn, bytes_stream):

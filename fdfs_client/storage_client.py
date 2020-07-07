@@ -89,16 +89,17 @@ def tcp_recv_file(conn, local_filename, file_size, buffer_size=1024):
     flush_size = 0
     remain_bytes = file_size
     with open(local_filename, 'wb+') as f:
-        while remain_bytes > 0:
+        diff_size = remain_bytes
+        while diff_size > buffer_size:
+            diff_size = remain_bytes - total_file_size
             try:
-                if remain_bytes >= buffer_size:
+                if diff_size >= buffer_size:
                     file_buffer, recv_size = tcp_recv_response(conn, buffer_size, \
                                                                buffer_size)
                 else:
-                    file_buffer, recv_size = tcp_recv_response(conn, remain_bytes, \
+                    file_buffer, recv_size = tcp_recv_response(conn, diff_size, \
                                                                buffer_size)
                 f.write(file_buffer)
-                remain_bytes -= recv_size
                 total_file_size += recv_size
                 flush_size += recv_size
                 if flush_size >= 4096:
@@ -435,11 +436,9 @@ class Storage_client(object):
             th.send_header(conn)
             # meta_fmt: |-filename_len(8)-meta_len(8)-op_flag(1)-group_name(16)
             #           -filename(remote_filename_len)-meta(meta_len)|
-            meta_fmt = '!Q Q c %ds %ds %ds' % (FDFS_GROUP_NAME_MAX_LEN, \
-                                               remote_filename_len, meta_len)
-            send_buffer = struct.pack(meta_fmt, remote_filename_len, meta_len, \
-                                      op_flag, store_serv.group_name, \
-                                      remote_filename, meta_buffer)
+            meta_fmt = '!Q Q c %ds %ds %ds' % (FDFS_GROUP_NAME_MAX_LEN, remote_filename_len, meta_len)
+            send_buffer = struct.pack(meta_fmt, remote_filename_len, meta_len, op_flag, store_serv.group_name.encode(),
+                                      remote_filename.encode(), meta_buffer)
             tcp_send_data(conn, send_buffer)
             th.recv_header(conn)
             if th.status != 0:
@@ -460,7 +459,7 @@ class Storage_client(object):
             th.send_header(store_conn)
             # meta_fmt: |-group_name(16)-filename(remote_filename_len)-|
             meta_fmt = '!%ds %ds' % (FDFS_GROUP_NAME_MAX_LEN, remote_filename_len)
-            send_buffer = struct.pack(meta_fmt, store_serv.group_name, remote_file_name)
+            send_buffer = struct.pack(meta_fmt, store_serv.group_name.encode(), remote_file_name.encode())
             tcp_send_data(store_conn, send_buffer)
             th.recv_header(store_conn)
             # if th.status == 2:
@@ -490,8 +489,7 @@ class Storage_client(object):
             # append_fmt: |-appended_filename_len(8)-file_size(8)-appended_filename(len)
             #             -filecontent(filesize)-|
             append_fmt = '!Q Q %ds' % appended_filename_len
-            send_buffer = struct.pack(append_fmt, appended_filename_len, file_size, \
-                                      appended_filename)
+            send_buffer = struct.pack(append_fmt, appended_filename_len, file_size, appended_filename.encode())
             tcp_send_data(store_conn, send_buffer)
             if upload_type == FDFS_UPLOAD_BY_FILENAME:
                 tcp_send_file(store_conn, file_buffer)
@@ -544,8 +542,8 @@ class Storage_client(object):
             # truncate_fmt:|-appender_filename_len(8)-truncate_filesize(8)
             #              -appender_filename(len)-|
             truncate_fmt = '!Q Q %ds' % appender_filename_len
-            send_buffer = struct.pack(truncate_fmt, appender_filename_len, \
-                                      truncated_filesize, appender_filename)
+            send_buffer = struct.pack(truncate_fmt, appender_filename_len, truncated_filesize,
+                                      appender_filename.encode())
             tcp_send_data(store_conn, send_buffer)
             th.recv_header(store_conn)
             if th.status != 0:
@@ -575,8 +573,7 @@ class Storage_client(object):
             th.send_header(store_conn)
             # modify_fmt: |-filename_len(8)-offset(8)-filesize(8)-filename(len)-|
             modify_fmt = '!Q Q Q %ds' % appender_filename_len
-            send_buffer = struct.pack(modify_fmt, appender_filename_len, offset, \
-                                      filesize, appender_filename)
+            send_buffer = struct.pack(modify_fmt, appender_filename_len, offset, filesize, appender_filename.encode())
             tcp_send_data(store_conn, send_buffer)
             if upload_type == FDFS_UPLOAD_BY_FILENAME:
                 upload_size = tcp_send_file(store_conn, filebuffer)

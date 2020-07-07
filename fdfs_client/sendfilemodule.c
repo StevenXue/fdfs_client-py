@@ -393,6 +393,7 @@ struct module_state *st;
 #endif
     if (module == NULL)
         INITERROR;
+    //struct module_state *st = GETSTATE(module);
     st = GETSTATE(module);
 
     st->error = PyErr_NewException("sendfile.Error", NULL, NULL);

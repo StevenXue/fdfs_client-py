@@ -12,8 +12,7 @@ from fdfs_client.exceptions import (
     DataError
 )
 
-
-## define FDFS protol constans
+# define FDFS protol constans
 TRACKER_PROTO_CMD_STORAGE_JOIN = 81
 FDFS_PROTO_CMD_QUIT = 82
 TRACKER_PROTO_CMD_STORAGE_BEAT = 83  # storage heart beat
@@ -94,8 +93,8 @@ STORAGE_SET_METADATA_FLAG_OVERWRITE_STR = "O"
 STORAGE_SET_METADATA_FLAG_MERGE = 'M'
 STORAGE_SET_METADATA_FLAG_MERGE_STR = "M"
 
-FDFS_RECORD_SEPERATOR = '\x01'
-FDFS_FIELD_SEPERATOR = '\x02'
+FDFS_RECORD_SEPERATOR = b'\x01'
+FDFS_FIELD_SEPERATOR = b'\x02'
 
 # common constants
 FDFS_STORAGE_ID_MAX_SIZE = 16
@@ -219,14 +218,13 @@ class Tracker_header(object):
 
 
 def fdfs_pack_metadata(meta_dict):
-    ret = ''
+    ret = b''
     for key in meta_dict:
-        ret += '%s%c%s%c' % (key, FDFS_FIELD_SEPERATOR, \
-                             meta_dict[key], FDFS_RECORD_SEPERATOR)
+        ret += b'%s%c%s%c' % (key, FDFS_FIELD_SEPERATOR, meta_dict[key], FDFS_RECORD_SEPERATOR)
     return ret[0:-1]
 
 
 def fdfs_unpack_metadata(bytes_stream):
     li = bytes_stream.split(FDFS_RECORD_SEPERATOR)
-    return dict([item.split(FDFS_FIELD_SEPERATOR) for item in li])
-    
+    res = [item.split(FDFS_FIELD_SEPERATOR) for item in li]
+    return map(lambda l: map(lambda ll: ll.decode(), l), res)
